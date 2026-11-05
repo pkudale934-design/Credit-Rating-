@@ -1,7 +1,7 @@
 """Shared helpers: load/save the data file, de-duplicate, parse rating from title."""
 import json, re, pathlib, urllib.request
 
-DATA_FILE = pathlib.Path(__file__).resolve().parent.parent / "data" / "ratings.json"
+DATA_FILE = pathlib.Path(__file__).resolve().parent / "ratings.json"
 UA = "Mozilla/5.0 (compatible; rating-tracker/1.0)"
 
 # Longest first so "CRISIL AA+" is not read as "CRISIL A"

@@ -6,7 +6,7 @@ with start={start}&limit={limit} in place of the paging numbers).
 import json, pathlib, sys, datetime
 from common import fetch_json, parse_title, load, save, merge
 
-CONFIG = json.loads((pathlib.Path(__file__).resolve().parent.parent / "config.json").read_text())
+CONFIG = json.loads((pathlib.Path(__file__).resolve().parent / "config.json").read_text())
 PAGE = 100
 MAX_PAGES = 30  # safety cap: 3,000 rows per run
 

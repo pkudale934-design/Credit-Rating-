@@ -17,7 +17,7 @@ th{background:#f0f0f0;position:sticky;top:0}a{color:#0b5fff}
 <script>
 let rows=[];
 const $=id=>document.getElementById(id);
-fetch("data/ratings.json?"+Date.now()).then(r=>r.json()).then(d=>{
+fetch("ratings.json?"+Date.now()).then(r=>r.json()).then(d=>{
   rows=d;
   $("sub").textContent=rows.length+" rationales · latest "+(rows[0]?rows[0].date:"–");
   for(const a of [...new Set(rows.map(r=>r.agency))].sort())$("ag").add(new Option(a,a));
