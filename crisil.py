@@ -1,14 +1,12 @@
-"""CRISIL collector. Reads the rationale list JSON (newest first), keeps only new rows.
-
-Set the list address once in config.json -> "crisil_url" (the same address you gave me,
-with start={start}&limit={limit} in place of the paging numbers).
-"""
-import json, pathlib, sys, datetime
+"""CRISIL collector. Reads the rationale list JSON (newest first), keeps only new rows."""
+import json, pathlib, sys, datetime, re
+from urllib.parse import quote
 from common import fetch_json, parse_title, load, save, merge
 
 CONFIG = json.loads((pathlib.Path(__file__).resolve().parent / "config.json").read_text())
 PAGE = 100
-MAX_PAGES = 30  # safety cap: 3,000 rows per run
+MAX_PAGES = 30  # safety cap per run (3,000 rows)
+DOC_BASE = "https://www.crisilratings.com/mnt/winshare/Ratings/RatingList/RatingDocs/"
 
 
 def parse_date(s):
@@ -20,31 +18,29 @@ def parse_date(s):
     return s
 
 
-def rows_from(payload):
-    # The list may be a bare list or wrapped; adapt to whichever key holds the records.
-    if isinstance(payload, list):
-        return payload
-    for k in ("data", "rows", "results", "items", "list"):
-        if isinstance(payload.get(k), list):
-            return payload[k]
-    return []
+def rating_from_heading(heading):
+    # Use the final quoted part (the new rating) when present
+    quoted = re.findall(r"[\u2018'\"]([^\u2019'\"]*)[\u2019'\"]", heading or "")
+    text = quoted[-1] if quoted else (heading or "")
+    return parse_title(text)
 
 
 def to_row(rec):
-    title = rec.get("title") or rec.get("Title") or ""
-    rating, outlook = parse_title(title)
+    heading = rec.get("heading") or ""
+    rating, outlook = rating_from_heading(heading)
+    fname = rec.get("ratingFileName") or ""
     return {
         "agency": "CRISIL",
-        "id": str(rec.get("prId") or rec.get("id")),
-        "date": parse_date(str(rec.get("date") or rec.get("Date") or rec.get("pubDate") or "")),
-        "company": rec.get("company") or rec.get("companyName") or rec.get("Company") or "",
-        "industry": rec.get("industry") or rec.get("Industry") or "",
-        "title": title,
+        "id": str(rec.get("prId")),
+        "date": parse_date(rec.get("ratingDate") or rec.get("transDate") or ""),
+        "company": rec.get("companyName") or "",
+        "industry": rec.get("industryName") or "",
+        "title": heading,
         "rating": rating,
         "outlook": outlook,
-        "amount": "",       # needs the rationale page; filled later if wanted
+        "amount": "",
         "instrument": "",
-        "url": rec.get("url") or rec.get("link") or rec.get("Link") or "",
+        "url": DOC_BASE + quote(fname) if fname else "",
     }
 
 
@@ -54,12 +50,14 @@ def main():
     new = []
     for p in range(MAX_PAGES):
         url = CONFIG["crisil_url"].format(start=p * PAGE, limit=PAGE)
-        recs = rows_from(fetch_json(url))
+        payload = fetch_json(url)
+        recs = payload.get("docs", []) if isinstance(payload, dict) else []
         if not recs:
+            if p == 0:
+                print("WARNING: CRISIL returned no records; keys:", list(payload)[:10] if isinstance(payload, dict) else type(payload))
             break
         page_rows = [to_row(r) for r in recs]
         new += [r for r in page_rows if r["id"] not in known]
-        # newest first: once a whole page is already known, we are caught up
         if all(r["id"] in known for r in page_rows):
             break
     added = merge(existing, new)
@@ -70,6 +68,6 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-    except Exception as e:  # one agency failing must not stop the others
+    except Exception as e:
         print(f"CRISIL FAILED: {e}", file=sys.stderr)
         sys.exit(1)
