@@ -1,3 +1,3 @@
 {
-  "crisil_url": "PASTE_YOUR_CRISIL_ADDRESS_HERE_USING_start={start}_AND_limit={limit}"
+  "crisil_url": "https://www.crisilratings.com/content/crisilratings/en/home/our-business/ratings/rating-rationale/_jcr_content/wrapper_100_par/ratingresultlisting.results.json?cmd=RR&start={start}&limit={limit}&filters=%7B%7D"
 }
